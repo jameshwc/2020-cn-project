@@ -28,5 +28,11 @@ func Handle(conn net.Conn) {
 }
 
 func serve(conn net.Conn, req *Request) {
+	beforeServe(conn, req)
+	switch req.URI {
+	case "/":
+		homepage(conn, req)
+	}
 	conn.Write([]byte(header2string(req.Headers)))
+	afterServe(conn, req)
 }
