@@ -12,7 +12,7 @@ func init() {
 
 func main() {
 	fmt.Println("start server....")
-	listen := myhttp.NewListener("0.0.0.0:3000")
+	listen := myhttp.NewListener("0.0.0.0:30006")
 	for {
 		conn, errs := listen.Accept()
 		if errs != nil {

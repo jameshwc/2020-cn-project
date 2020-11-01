@@ -14,7 +14,7 @@ func Handle(conn net.Conn) {
 	if err != nil || n == 0 {
 		return
 	}
-	_, err = parseRequest(buf)
+	request, err := parseRequest(buf)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -24,5 +24,9 @@ func Handle(conn net.Conn) {
 	if err != nil {
 		return
 	}
+	serve(conn, request)
+}
 
+func serve(conn net.Conn, req *Request) {
+	conn.Write([]byte(header2string(req.Headers)))
 }
