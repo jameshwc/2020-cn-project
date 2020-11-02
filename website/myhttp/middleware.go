@@ -1,11 +1,9 @@
 package myhttp
 
-import "net"
-
-func beforeServe(conn net.Conn, req *Request) {
+func beforeServe(c *Context) {
 
 }
 
-func afterServe(conn net.Conn, req *Request) {
+func afterServe(c *Context) {
 
 }

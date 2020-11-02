@@ -3,21 +3,23 @@ package myhttp
 import (
 	"bytes"
 	"errors"
-	"fmt"
+	"net/url"
 )
 
 type Request struct {
-	Method  string
-	URI     string
-	Version string //http
-	Headers map[string][]string
-	Body    string
+	Method   string
+	URL      *url.URL
+	Version  string //http
+	Headers  map[string][]string
+	Body     string
+	PostForm url.Values
 }
 
 var (
 	ErrRequestFormatError     = errors.New("Request not follow HTTP/1.1 protocol (RFC 2616)")
 	ErrRequestMethodIncorrect = errors.New("Request HTTP method incorrect")
 	ErrRequestHeaderKeyValue  = errors.New("Request headers not follow {$key: $value} format")
+	ErrRequestParseURLError   = errors.New("Request parse url error")
 )
 
 func parseRequest(dat []byte) (*Request, error) {
@@ -37,10 +39,14 @@ func parseRequest(dat []byte) (*Request, error) {
 		return nil, err
 	}
 
-	fmt.Println(headers)
 	body := string(split[1])
 
-	return &Request{method, uri, version, headers, body}, nil
+	url, err := url.ParseRequestURI(uri)
+	if err != nil {
+		return nil, ErrRequestParseURLError
+	}
+
+	return &Request{method, url, version, headers, body, nil}, nil
 }
 
 func parseRequestLine(dat []byte) (method, uri, version string, err error) {
