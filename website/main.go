@@ -21,8 +21,12 @@ func init() {
 func main() {
 	fmt.Println("start server....")
 	endPoint := fmt.Sprintf(":%d", conf.ServerConfig.HttpPort)
-	listen := myhttp.NewListener(endPoint)
+
+	listen := myhttp.NewNetSocket(endPoint)
+	defer listen.Close()
+
 	router := myhttp.NewRouter()
+
 	router.GET("/", view.Homepage)
 	router.POST("/messages", view.AddMessage)
 	router.GET("/messages", view.ShowMessage)
@@ -31,6 +35,9 @@ func main() {
 	router.GET("/login", viewuser.LoginForm)
 	router.POST("/login", viewuser.Login)
 	router.GET("/logout", viewuser.Logout)
+	router.GET("/video/video.mp4", view.Video)
+	router.GET("/video_demo", view.VideoDemo)
+
 	for {
 		conn, errs := listen.Accept()
 		if errs != nil {

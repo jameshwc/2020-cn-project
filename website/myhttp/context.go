@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"html/template"
+	"io/ioutil"
 	"net"
 	"net/url"
 	"strconv"
@@ -12,7 +13,8 @@ import (
 )
 
 type Context struct {
-	conn          net.Conn
+	conn          Conn
+	body          []byte
 	Headers       Header
 	Request       *Request
 	isHeaderWrite bool
@@ -21,12 +23,13 @@ type Context struct {
 }
 
 const (
-	htmlContentType = "text/html; charset=utf-8"
-	jsonContentType = "application/json; charset=utf-8"
+	htmlContentType  = "text/html; charset=utf-8"
+	jsonContentType  = "application/json; charset=utf-8"
+	videoContentType = "video/mp4"
 )
 
-func NewContext(c net.Conn, req *Request) *Context {
-	return &Context{c, make(map[string][]string), req, false, nil, nil}
+func NewContext(c Conn, req *Request) *Context {
+	return &Context{c, make([]byte, 0), make(map[string][]string), req, false, nil, nil}
 }
 
 func (c *Context) Write(b []byte) (int, error) {
@@ -40,15 +43,25 @@ func (c *Context) Close() error {
 func (c *Context) HTML(code int, templateName string, templates []string, obj interface{}) {
 	c.writeStatusCode(code)
 	c.setContentType(htmlContentType)
-	c.WriteHeaders()
 	c.renderHTML(templateName, templates, obj)
+	c.WriteHeaders()
+	c.WriteBody()
 }
 
 func (c *Context) JSON(code int, obj interface{}) {
 	c.writeStatusCode(code)
 	c.setContentType(jsonContentType)
-	c.WriteHeaders()
 	c.WriteJSON(obj)
+	c.WriteHeaders()
+	c.WriteBody()
+}
+
+func (c *Context) VIDEO(filepath string) {
+	c.writeStatusCode(200)
+	c.setContentType(videoContentType)
+	c.writeFile(filepath)
+	c.WriteHeaders()
+	c.WriteBody()
 }
 
 func (c *Context) WriteString(s string) {
@@ -72,6 +85,10 @@ func (c *Context) WriteHeaders() {
 	c.isHeaderWrite = true
 }
 
+func (c *Context) WriteBody() {
+	c.conn.Write(c.body)
+}
+
 func (c *Context) setContentType(val string) {
 	if c.Headers.Get("Content-Type") == "" {
 		c.Headers.Set("Content-Type", val)
@@ -86,7 +103,21 @@ func (c *Context) renderHTML(templateName string, templates []string, obj interf
 		log.Error("render html execute error: ", err)
 		return
 	}
-	c.conn.Write(t.Bytes())
+	c.body = t.Bytes()
+
+}
+
+func (c *Context) writeFile(filepath string) {
+	data, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	c.body = data
+}
+
+func (c *Context) RequestIP() net.IP {
+	return c.conn.Addr()
 }
 
 func (c *Context) Query(key string) string {
@@ -209,8 +240,8 @@ func (c *Context) WriteJSON(obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.conn.Write(jsonBytes)
-	return err
+	c.body = jsonBytes
+	return nil
 }
 
 func (c *Context) SetCookie(key, val string) {

@@ -2,9 +2,12 @@ package log
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"runtime"
+	"website/conf"
 
+	logrustash "github.com/bshuster-repo/logrus-logstash-hook"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,6 +29,12 @@ func Setup() {
 			FullTimestamp:   true,
 		},
 	}
+	conn, err := net.Dial("tcp", conf.LogConfig.LogStashAddr)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	hook := logrustash.New(conn, logrustash.DefaultFormatter(logrus.Fields{"type": "myappName"}))
+	Logger.Hooks.Add(hook)
 }
 
 // Debug output logs at debug level
@@ -73,8 +82,8 @@ func Fatalf(format string, args ...interface{}) {
 	Logger.WithField("source", getSource()).Fatalf(format, args...)
 }
 
-func TraceIP(ipaddr, endpoint string) {
-	Logger.WithField("ip", ipaddr).WithField("endpoint", endpoint).Trace()
+func TraceIP(ipaddr, method, endpoint string) {
+	Logger.WithField("ip", ipaddr).WithField("method", method).WithField("endpoint", endpoint).Trace()
 }
 
 // get source of the log output

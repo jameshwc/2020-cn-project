@@ -51,29 +51,7 @@ func Setup() {
 		log.Fatal("read config: server_port is not a number: ", err.Error())
 	}
 	ServerConfig = &Server{
-		RunMode:   os.Getenv("server_runmode"),
-		HttpPort:  port,
-		JwtSecret: os.Getenv("server_jwt_secret"),
-		Revision:  os.Getenv("server_git_commit_sha"),
-	}
-	minIdleConn, err := strconv.Atoi(os.Getenv("redis_min_idle_conn"))
-	if err != nil {
-		log.Fatal("read config: redis_min_idle_conn is not a number")
-	}
-	idleTimeout, err := strconv.Atoi(os.Getenv("redis_idle_timeout"))
-	if err != nil {
-		log.Fatal("read config: redis_idle_timeout is not a number")
-	}
-	redisPort, err := strconv.Atoi(os.Getenv("redis_port"))
-	if err != nil {
-		log.Fatal("read config: redis_port is not a number")
-	}
-	RedisConfig = &Redis{
-		Host:        os.Getenv("redis_host"),
-		Port:        redisPort,
-		Password:    os.Getenv("redis_password"),
-		MinIdleConn: minIdleConn,
-		IdleTimeout: time.Duration(idleTimeout) * time.Second,
+		HttpPort: port,
 	}
 	LogConfig = &Log{
 		LogStashAddr: os.Getenv("logstash_addr"),

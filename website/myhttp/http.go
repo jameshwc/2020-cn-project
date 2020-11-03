@@ -3,10 +3,9 @@ package myhttp
 import (
 	"fmt"
 	"log"
-	"net"
 )
 
-func Handle(conn net.Conn, r *Router) {
+func Handle(conn Conn, r *Router) {
 	defer fmt.Println("connection closed...")
 	defer conn.Close() // TODO: move it to method?
 	buf := make([]byte, 1024)
@@ -25,7 +24,6 @@ func Handle(conn net.Conn, r *Router) {
 func serve(c *Context, r *Router) {
 	beforeServe(c)
 	f, ok := r.GetHandler(c.Request.Method, c.Request.URL.Path)
-	fmt.Println(c.Request.Method, c.Request.URL.Path)
 	if !ok {
 		c.NotFound()
 		return
