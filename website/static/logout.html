@@ -1,0 +1,16 @@
+{{ define "user/logout" }}
+    {{ template "header" . }}
+
+    {{ if .Logout }}
+    <h3>Logout successfully! Now redirect to homepage...</h3>
+    {{ else }}
+    <h3>You don't login yet! Now redirect to homepage...</h3>
+    {{ end }}
+    <script>
+    window.setTimeout(function(){
+        window.location.href = "/";
+    }, 3000);</script>
+
+{{ template "footer" . }}
+
+{{ end }}

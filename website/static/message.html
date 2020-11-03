@@ -1,0 +1,42 @@
+{{ define "message" }}
+{{ template "header" . }}
+
+<hr size=1>
+<center>
+<font size=5 color=red>Message Board</font>
+<br>
+<font color="green" size="2"> v0.3</font>
+<hr size=1>
+<table align=center border=0><tr><td>
+
+<form id="message_board" method="POST" action="/messages">
+
+Name: <input type="text" name="name" size="30">
+<br>
+
+Content:<br>
+<textarea name="content" rows="5" cols="45"></textarea>
+<p>
+<input type="submit" value="Submit"> <input type="reset" value="clean">
+</form>
+
+</td></tr></table></center>
+<center>
+
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Content</th>
+            <th>Submit Time</th>
+        </tr>
+        {{ range .messages }}
+        <tr>
+            <td>{{ .Name }} </td>
+            <td>{{ .Content }}</td>
+            <td>{{ .SubmitTime }}</td>
+        </tr>
+        {{ end }}
+    </table>
+</center>
+{{ template "footer" . }}
+{{ end }}

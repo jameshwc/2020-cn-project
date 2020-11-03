@@ -1,11 +1,13 @@
 package myhttp
 
 import (
+	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"html/template"
 	"net"
 	"net/url"
 	"strconv"
+	"strings"
 	"website/log"
 )
 
@@ -35,11 +37,11 @@ func (c *Context) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Context) HTML(code int, filename string, obj interface{}) {
+func (c *Context) HTML(code int, templateName string, templates []string, obj interface{}) {
 	c.writeStatusCode(code)
 	c.setContentType(htmlContentType)
 	c.WriteHeaders()
-	c.renderHTML(filename, obj)
+	c.renderHTML(templateName, templates, obj)
 }
 
 func (c *Context) JSON(code int, obj interface{}) {
@@ -76,13 +78,15 @@ func (c *Context) setContentType(val string) {
 	}
 }
 
-func (c *Context) renderHTML(filename string, obj interface{}) {
-	f, err := ioutil.ReadFile(filename)
+func (c *Context) renderHTML(templateName string, templates []string, obj interface{}) {
+	tpl := template.Must(template.ParseFiles(templates...))
+	var t bytes.Buffer
+	err := tpl.ExecuteTemplate(&t, templateName, obj)
 	if err != nil {
-		log.Error("render html file error: ", err)
+		log.Error("render html execute error: ", err)
 		return
 	}
-	c.conn.Write(f)
+	c.conn.Write(t.Bytes())
 }
 
 func (c *Context) Query(key string) string {
@@ -151,10 +155,18 @@ func (c *Context) getFormCache() {
 	if c.formCache == nil {
 		c.formCache = make(url.Values)
 		req := c.Request
-		if err := req.ParseFrom(); err != nil {
+		if err := req.ParseForm(); err != nil {
 			log.Error(err)
 		}
-		c.formCache = req.PostForm
+		cleanForm := make(url.Values)
+		for k, v := range req.PostForm {
+			var newV []string
+			for _, vv := range v {
+				newV = append(newV, cleanNullByte(vv))
+			}
+			cleanForm[k] = newV
+		}
+		c.formCache = cleanForm
 	}
 }
 
@@ -172,14 +184,63 @@ func (c *Context) NotFound() {
 	c.writeStatusCode(404)
 	c.setContentType(htmlContentType)
 	c.WriteHeaders()
-	c.conn.Write([]byte("404 not found"))
+	c.conn.Write([]byte("404 Not Found"))
+}
+
+func (c *Context) Forbidden() {
+	c.writeStatusCode(403)
+	c.setContentType(htmlContentType)
+	c.WriteHeaders()
+	c.conn.Write([]byte("403 Forbidden"))
+}
+
+func (c *Context) InternalError() {
+	c.writeStatusCode(500)
+	c.setContentType(htmlContentType)
+	c.WriteHeaders()
+	c.conn.Write([]byte("500 Internal Error"))
 }
 
 func (c *Context) WriteJSON(obj interface{}) error {
+	if obj == nil {
+		return nil
+	}
 	jsonBytes, err := json.Marshal(obj)
 	if err != nil {
 		return err
 	}
 	_, err = c.conn.Write(jsonBytes)
 	return err
+}
+
+func (c *Context) SetCookie(key, val string) {
+
+}
+
+func (c *Context) Cookie(key string) string {
+	cookie, ok := c.Request.Headers["Cookie"]
+	if !ok {
+		return ""
+	}
+	s := strings.Split(cookie[0], "; ")
+	for i := range s {
+		ss := strings.SplitN(s[i], "=", 2)
+		k, v := ss[0], ss[1]
+		if len(k) == 0 {
+			continue
+		}
+		if k == key {
+			return v
+		}
+	}
+	return ""
+}
+
+func cleanNullByte(s string) string {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] != 0 {
+			return s[:i+1]
+		}
+	}
+	return s
 }

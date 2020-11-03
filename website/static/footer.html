@@ -1,0 +1,60 @@
+{{ define "footer" }}
+
+</div>
+</body>
+<script>
+    let nav = $('.nav-item');
+    for(let i = 0; i < nav.length; i++) {
+        if (nav[i].firstElementChild.innerText == $("title").text()) {
+            nav[i].classList.add("active");
+        }
+        if (nav[i].firstElementChild.classList.contains("nav-user")) {
+            nav[i]
+        }
+    }
+    $('#message_board').submit(function (e) {
+        // prevent form submission
+        var thisForm = $(this);
+        $.ajax({
+            // simulate form submission
+            type: thisForm.attr('method') || 'POST',
+            url: thisForm.attr('action') || window.location.href,
+            data: thisForm.serialize(),
+            success: function (data) {
+                location.reload();
+            }
+        });
+        e.preventDefault();
+    });
+    $('#register').submit(function (e) {
+    var thisForm = $(this);
+    $.ajax({
+        type: thisForm.attr('method') || 'POST',
+        url: thisForm.attr('action') || window.location.href,
+        data: thisForm.serialize(),
+        success: function (data) {
+            alert('register successfully! now redirect to homepage');
+            window.location.replace("/");
+        }
+    });
+    e.preventDefault();
+});
+$('#login').submit(function (e) {
+    var thisForm = $(this);
+    $.ajax({
+        type: thisForm.attr('method') || 'POST',
+        url: thisForm.attr('action') || window.location.href,
+        data: thisForm.serialize(),
+        success: function (data) {
+            alert('login successfully! now redirect to homepage');
+            window.location.replace("/");
+        },
+        error: function(data) {
+            alert('login failed!')
+        }
+    });
+    e.preventDefault();
+});
+</script>
+</html>
+{{ end }}

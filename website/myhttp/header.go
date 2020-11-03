@@ -12,3 +12,10 @@ func (h Header) Get(key string) string {
 	}
 	return ""
 }
+
+func (h Header) Gets(key string) []string {
+	if v, ok := h[key]; ok {
+		return v
+	}
+	return []string{}
+}

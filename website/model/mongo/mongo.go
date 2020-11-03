@@ -8,6 +8,9 @@ import (
 )
 
 var db *mgo.Database
+var uC *mgo.Collection
+var aC *mgo.Collection
+var mC *mgo.Collection
 
 func Setup() {
 	session, err := mgo.Dial(conf.DBconfig.Host)
@@ -19,4 +22,7 @@ func Setup() {
 	if err := db.Session.Ping(); err != nil {
 		log.Fatal("mongo: ", err)
 	}
+	uC = db.C(userCollectionName)
+	aC = db.C(authCollectionName)
+	mC = db.C(msgCollectionName)
 }

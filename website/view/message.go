@@ -6,6 +6,7 @@ import (
 	"website/model"
 	"website/model/mongo"
 	"website/myhttp"
+	viewuser "website/view/user"
 )
 
 func AddMessage(c *myhttp.Context) {
@@ -14,23 +15,23 @@ func AddMessage(c *myhttp.Context) {
 	c.Headers.Set("Location", "/messages")
 	err := mongo.AddMessage(msg)
 	if err != nil {
-		c.HTML(500, "static/message_internal_error.html", nil)
+		c.InternalError()
 		log.InfoWithSource(err)
 		return
 	}
-	c.HTML(200, "static/message.html", nil)
+	c.WriteString("submit successfully")
 }
 
 func ShowMessage(c *myhttp.Context) {
+	auth, username := viewuser.CheckLogin(c.Cookie("sessionid"))
+
 	msg, err := mongo.GetMessageAll()
 	if err != nil {
-		c.HTML(500, "static/message_internal_error.html", nil)
+		c.InternalError()
 		log.InfoWithSource(err)
 		return
 	}
-	if len(msg) == 0 {
-		c.HTML(500, "static/message_internal_error.html", nil)
-		return
-	}
-	c.JSON(200, msg)
+	c.HTML(200, "message", []string{"static/message.html", "static/header.html", "static/footer.html"}, map[string]interface{}{
+		"PageTitle": "Message Board", "messages": msg, "Auth": auth, "Username": username,
+	})
 }

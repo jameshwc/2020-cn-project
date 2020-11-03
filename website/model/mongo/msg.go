@@ -4,11 +4,10 @@ import (
 	"website/model"
 )
 
-const msgTableName = "messages"
+const msgCollectionName = "messages"
 
 func AddMessage(msg *model.Message) error {
-	c := db.C(msgTableName)
-	err := c.Insert(msg)
+	err := mC.Insert(msg)
 	if err != nil {
 		return err
 	}
@@ -16,7 +15,6 @@ func AddMessage(msg *model.Message) error {
 }
 
 func GetMessageAll() (msg []model.Message, err error) {
-	c := db.C(msgTableName)
-	err = c.Find(nil).All(&msg)
+	err = mC.Find(nil).All(&msg)
 	return
 }

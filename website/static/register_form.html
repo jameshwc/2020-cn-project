@@ -1,0 +1,24 @@
+{{ define "user/register_form" }}
+    {{ template "header" . }}
+    <body>
+        <hr size=1>
+<center>
+<font size=5 color=red>Register</font>
+<hr size=1>
+<table align=center border=0><tr><td>
+
+<form id="register" method="POST" action="/register">
+
+User Name: <input type="text" name="username" size="30">
+<br>
+<br>
+Password: <input type="password" name="password">
+<p>
+<input type="submit" value="Submit">
+</form>
+
+</td></tr></table></center>
+
+{{ template "footer" . }}
+
+{{ end }}
