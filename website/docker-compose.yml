@@ -1,17 +1,10 @@
 version: '3.2'
 services:
   web:
-    environment:
-      db_user: ${db_user}
-      db_host: ${db_host}
-      db_name: ${db_name}
-      db_table_prefix: ${db_table_prefix}
-      server_port: ${server_port}
-      logstash_addr: ${logstash_addr}
-    
+    env_file: .env-docker-compose
     build: .
     ports:
-      - 80:80
+      - 80:8000
     links:
       - db
       - logstash
@@ -24,7 +17,6 @@ services:
   db:
     image: mongo:latest
     restart: always
-    # environment:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.9.2

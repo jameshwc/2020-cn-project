@@ -20,7 +20,7 @@ func Setup() {
 	session.SetMode(mgo.Monotonic, true)
 	db = session.DB(conf.DBconfig.Name)
 	if err := db.Session.Ping(); err != nil {
-		log.Fatal("mongo: ", err)
+		log.Fatal("mongo: ", err, " ", conf.DBconfig.Host)
 	}
 	uC = db.C(userCollectionName)
 	aC = db.C(authCollectionName)

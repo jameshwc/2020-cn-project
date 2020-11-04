@@ -1,12 +1,10 @@
 package myhttp
 
 import (
-	"fmt"
 	"log"
 )
 
 func Handle(conn Conn, r *Router) {
-	defer fmt.Println("connection closed...")
 	defer conn.Close() // TODO: move it to method?
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)

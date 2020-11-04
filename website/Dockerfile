@@ -19,9 +19,10 @@ RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
 RUN mkdir -p /api
 WORKDIR /api
 COPY --from=builder /api/app .
+COPY --from=builder /api/static static/
 COPY wait-for-it.sh .
 RUN apk add --no-cache bash
 RUN chmod +x wait-for-it.sh
 EXPOSE 8000
 
-ENTRYPOINT ["./wait-for-it.sh", "db:3306", "--", "./wait-for-it.sh", "redis:6379", "--", "./app"]
+ENTRYPOINT ["./wait-for-it.sh", "db:27017", "--", "./wait-for-it.sh", "logstash:5000", "--", "./app"]

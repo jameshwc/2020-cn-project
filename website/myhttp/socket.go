@@ -50,7 +50,7 @@ func NewNetSocket(addr string) *NetSocket {
 
 func (ns *NetSocket) Accept() (Conn, error) {
 
-	nfd, sa, err := rawAccept(ns.fd)
+	nfd, rsa, err := rawAccept(ns.fd)
 	if err == nil {
 		syscall.CloseOnExec(nfd)
 	}
@@ -59,7 +59,11 @@ func (ns *NetSocket) Accept() (Conn, error) {
 		return nil, err
 	}
 
-	ip := net.ParseIP(convertIP(sa.Data[2:6]))
+	sa, err := parseIP(rsa)
+	if err != nil {
+		return nil, err
+	}
+	ip := net.ParseIP(convertIP(sa.Addr))
 
 	return &NetSocket{nfd, ip}, nil
 }
@@ -113,6 +117,17 @@ func rawAccept(fd int) (int, *syscall.RawSockaddr, error) {
 	return nfd, &rsa, err
 }
 
-func convertIP(data []int8) string {
-	return fmt.Sprintf("%d.%d.%d.%d", data[0], data[1], data[2], data[3])
+func convertIP(data [4]byte) string {
+	return fmt.Sprintf("%d.%d.%d.%d", int(data[0]), int(data[1]), int(data[2]), int(data[3]))
+}
+
+func parseIP(rsa *syscall.RawSockaddr) (*syscall.SockaddrInet4, error) {
+	pp := (*syscall.RawSockaddrInet4)(unsafe.Pointer(rsa))
+	sa := new(syscall.SockaddrInet4)
+	p := (*[2]byte)(unsafe.Pointer(&pp.Port))
+	sa.Port = int(p[0])<<8 + int(p[1])
+	for i := 0; i < len(sa.Addr); i++ {
+		sa.Addr[i] = pp.Addr[i]
+	}
+	return sa, nil
 }
