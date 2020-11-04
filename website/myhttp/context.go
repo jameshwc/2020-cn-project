@@ -3,6 +3,7 @@ package myhttp
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"html/template"
 	"io/ioutil"
 	"net"
@@ -13,23 +14,34 @@ import (
 )
 
 type Context struct {
-	conn          Conn
-	body          []byte
-	Headers       Header
-	Request       *Request
-	isHeaderWrite bool
-	queryCache    url.Values
-	formCache     url.Values
+	conn           Conn
+	body           []byte
+	Headers        Header
+	Request        *Request
+	isRange        bool
+	isPartialRange bool
+	isHeaderWrite  bool
+	rangeL         int
+	rangeR         int
+	ContentLength  int
+	StatusCode     int
+	queryCache     url.Values
+	formCache      url.Values
 }
 
 const (
 	htmlContentType  = "text/html; charset=utf-8"
 	jsonContentType  = "application/json; charset=utf-8"
-	videoContentType = "video/mp4"
+	videoContentType = "application/mp4"
+)
+
+var (
+	ErrRangeNaN   = errors.New("header range not number")
+	ErrRangeError = errors.New("header range negative or overlap or too big")
 )
 
 func NewContext(c Conn, req *Request) *Context {
-	return &Context{c, make([]byte, 0), make(map[string][]string), req, false, nil, nil}
+	return &Context{c, make([]byte, 0), make(map[string][]string), req, false, false, false, 0, 0, 0, 0, nil, nil}
 }
 
 func (c *Context) Write(b []byte) (int, error) {
@@ -41,7 +53,7 @@ func (c *Context) Close() error {
 }
 
 func (c *Context) HTML(code int, templateName string, templates []string, obj interface{}) {
-	c.writeStatusCode(code)
+	c.StatusCode = code
 	c.setContentType(htmlContentType)
 	c.renderHTML(templateName, templates, obj)
 	c.WriteHeaders()
@@ -49,7 +61,7 @@ func (c *Context) HTML(code int, templateName string, templates []string, obj in
 }
 
 func (c *Context) JSON(code int, obj interface{}) {
-	c.writeStatusCode(code)
+	c.StatusCode = code
 	c.setContentType(jsonContentType)
 	c.WriteJSON(obj)
 	c.WriteHeaders()
@@ -57,26 +69,32 @@ func (c *Context) JSON(code int, obj interface{}) {
 }
 
 func (c *Context) VIDEO(filepath string) {
-	c.writeStatusCode(200)
+	c.StatusCode = 200
 	c.setContentType(videoContentType)
 	c.writeFile(filepath)
+	c.handleRange()
 	c.WriteHeaders()
 	c.WriteBody()
 }
 
 func (c *Context) WriteString(s string) {
-	c.writeStatusCode(200)
+	c.StatusCode = 200
 	c.setContentType(htmlContentType)
 	c.WriteHeaders()
 	c.conn.Write([]byte(s))
 }
 
-func (c *Context) writeStatusCode(code int) {
-	c.conn.Write([]byte("HTTP/1.1 " + strconv.Itoa(code) + " " + ReasonPhrase[code] + "\r\n"))
+func (c *Context) writeStatusCode() {
+	c.conn.Write([]byte("HTTP/1.1 " + strconv.Itoa(c.StatusCode) + " " + ReasonPhrase[c.StatusCode] + "\r\n"))
 }
 
 func (c *Context) WriteHeaders() {
 	if !c.isHeaderWrite {
+		c.writeStatusCode()
+		if c.ContentLength == 0 {
+			c.ContentLength = len(c.body)
+		}
+		c.Headers.Set("Content-Length", strconv.Itoa(c.ContentLength))
 		for k, v := range c.Headers {
 			c.conn.Write([]byte(k + ": " + v[0] + "\r\n"))
 		}
@@ -212,21 +230,21 @@ func (c *Context) GetPostFormArray(key string) ([]string, bool) {
 }
 
 func (c *Context) NotFound() {
-	c.writeStatusCode(404)
+	c.StatusCode = 404
 	c.setContentType(htmlContentType)
 	c.WriteHeaders()
 	c.conn.Write([]byte("404 Not Found"))
 }
 
 func (c *Context) Forbidden() {
-	c.writeStatusCode(403)
+	c.StatusCode = 403
 	c.setContentType(htmlContentType)
 	c.WriteHeaders()
 	c.conn.Write([]byte("403 Forbidden"))
 }
 
 func (c *Context) InternalError() {
-	c.writeStatusCode(500)
+	c.StatusCode = 500
 	c.setContentType(htmlContentType)
 	c.WriteHeaders()
 	c.conn.Write([]byte("500 Internal Error"))
@@ -265,6 +283,38 @@ func (c *Context) Cookie(key string) string {
 		}
 	}
 	return ""
+}
+
+func (c *Context) handleRange() error {
+	c.Headers.Set("Content-Transfer-Encoding", "binary")
+	if v, ok := c.Request.Headers["Range"]; ok && len(v) == 1 && strings.HasPrefix(v[0], "bytes=") {
+		req := v[0][6:]
+		sp := strings.SplitN(req, "-", 2)
+		startSizeString, endSizeString := sp[0], sp[1]
+		startSize, err := strconv.Atoi(startSizeString)
+		if err != nil {
+			return ErrRangeNaN
+		}
+		endSize := len(c.body) - 1
+		if len(endSizeString) > 0 {
+			endSize, err = strconv.Atoi(endSizeString)
+			if err != nil {
+				return ErrRangeNaN
+			}
+		} else {
+			endSizeString = strconv.Itoa(endSize)
+		}
+		if startSize < 0 || startSize > endSize {
+			return ErrRangeError
+		}
+		c.Headers.Set("Accept-Ranges", "bytes")
+		size := strconv.Itoa(len(c.body))
+		c.Headers.Set("Content-Range", "bytes "+startSizeString+"-"+endSizeString+"/"+size)
+		c.body = c.body[startSize : endSize+1]
+		c.ContentLength = endSize - startSize + 1
+		c.StatusCode = 206
+	}
+	return nil
 }
 
 func cleanNullByte(s string) string {

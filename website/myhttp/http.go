@@ -1,19 +1,15 @@
 package myhttp
 
-import (
-	"log"
-)
-
 func Handle(conn Conn, r *Router) {
 	defer conn.Close() // TODO: move it to method?
-	buf := make([]byte, 1024)
+	buf := make([]byte, 4096)
 	n, err := conn.Read(buf)
 	if err != nil || n == 0 {
 		return
 	}
 	request, err := parseRequest(buf)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	c := NewContext(conn, request)
 	serve(c, r)
