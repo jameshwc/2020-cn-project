@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "config.h"
@@ -50,7 +51,10 @@ void handle_socket(int socket_fd) {
     int file_fd = open(&buffer[5],O_RDONLY);
     if(file_fd==-1) write(socket_fd, "Failed to open file", 19);
 
-    sprintf(buffer,"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+    struct stat buf;
+    fstat(file_fd, &buf);
+
+    sprintf(buffer,"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n", buf.st_size);
     write(socket_fd,buffer,strlen(buffer));
 
     while ((n=read(file_fd, buffer, BUF_SIZE))>0) {
