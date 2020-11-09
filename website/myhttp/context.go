@@ -14,25 +14,24 @@ import (
 )
 
 type Context struct {
-	conn           Conn
-	body           []byte
-	Headers        Header
-	Request        *Request
-	isRange        bool
-	isPartialRange bool
-	isHeaderWrite  bool
-	rangeL         int
-	rangeR         int
-	ContentLength  int
-	StatusCode     int
-	queryCache     url.Values
-	formCache      url.Values
+	conn          Conn
+	body          []byte
+	Headers       Header
+	Request       *Request
+	isHeaderWrite bool
+	ContentLength int
+	ContentType   string
+	StatusCode    int
+	queryCache    url.Values
+	formCache     url.Values
 }
 
 const (
-	htmlContentType  = "text/html; charset=utf-8"
-	jsonContentType  = "application/json; charset=utf-8"
-	videoContentType = "application/mp4"
+	htmlContentType     = "text/html; charset=utf-8"
+	jsonContentType     = "application/json; charset=utf-8"
+	videoContentType    = "video/mp4"
+	mp3AudioContentType = "audio/mpeg"
+	wavAudioContentTYpe = "audio/wav"
 )
 
 var (
@@ -41,11 +40,7 @@ var (
 )
 
 func NewContext(c Conn, req *Request) *Context {
-	return &Context{c, make([]byte, 0), make(map[string][]string), req, false, false, false, 0, 0, 0, 0, nil, nil}
-}
-
-func (c *Context) Write(b []byte) (int, error) {
-	return c.conn.Write(b)
+	return &Context{c, make([]byte, 0), make(map[string][]string), req, false, 0, "", 0, nil, nil}
 }
 
 func (c *Context) Close() error {
@@ -54,32 +49,40 @@ func (c *Context) Close() error {
 
 func (c *Context) HTML(code int, templateName string, templates []string, obj interface{}) {
 	c.StatusCode = code
-	c.setContentType(htmlContentType)
+	c.ContentType = htmlContentType
 	c.renderHTML(templateName, templates, obj)
-	c.WriteHeaders()
-	c.WriteBody()
+	c.Response()
 }
 
 func (c *Context) JSON(code int, obj interface{}) {
 	c.StatusCode = code
-	c.setContentType(jsonContentType)
+	c.ContentType = jsonContentType
 	c.WriteJSON(obj)
-	c.WriteHeaders()
-	c.WriteBody()
+	c.Response()
 }
 
 func (c *Context) VIDEO(filepath string) {
+	c.serveFile(filepath, videoContentType)
+}
+
+func (c *Context) AUDIO(filepath string) {
+	c.serveFile(filepath, audioContentType)
+}
+
+func (c *Context) serveFile(filepath, contentType string) {
 	c.StatusCode = 200
-	c.setContentType(videoContentType)
-	c.writeFile(filepath)
-	c.handleRange()
-	c.WriteHeaders()
-	c.WriteBody()
+	c.ContentType = videoContentType
+	c.readFile(filepath)
+	if err := c.handleRange(); err != nil {
+		c.RangeNotSatisfiable()
+		return
+	}
+	c.Response()
 }
 
 func (c *Context) WriteString(s string) {
 	c.StatusCode = 200
-	c.setContentType(htmlContentType)
+	c.ContentType = htmlContentType
 	c.WriteHeaders()
 	c.conn.Write([]byte(s))
 }
@@ -88,12 +91,18 @@ func (c *Context) writeStatusCode() {
 	c.conn.Write([]byte("HTTP/1.1 " + strconv.Itoa(c.StatusCode) + " " + ReasonPhrase[c.StatusCode] + "\r\n"))
 }
 
+func (c *Context) Response() {
+	c.WriteHeaders()
+	c.WriteBody()
+}
+
 func (c *Context) WriteHeaders() {
 	if !c.isHeaderWrite {
 		c.writeStatusCode()
 		if c.ContentLength == 0 {
 			c.ContentLength = len(c.body)
 		}
+		c.Headers.Set("Content-Type", c.ContentType)
 		c.Headers.Set("Content-Length", strconv.Itoa(c.ContentLength))
 		for k, v := range c.Headers {
 			c.conn.Write([]byte(k + ": " + v[0] + "\r\n"))
@@ -105,12 +114,6 @@ func (c *Context) WriteHeaders() {
 
 func (c *Context) WriteBody() {
 	c.conn.Write(c.body)
-}
-
-func (c *Context) setContentType(val string) {
-	if c.Headers.Get("Content-Type") == "" {
-		c.Headers.Set("Content-Type", val)
-	}
 }
 
 func (c *Context) renderHTML(templateName string, templates []string, obj interface{}) {
@@ -125,7 +128,7 @@ func (c *Context) renderHTML(templateName string, templates []string, obj interf
 
 }
 
-func (c *Context) writeFile(filepath string) {
+func (c *Context) readFile(filepath string) {
 	data, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		log.Error(err)
@@ -231,21 +234,27 @@ func (c *Context) GetPostFormArray(key string) ([]string, bool) {
 
 func (c *Context) NotFound() {
 	c.StatusCode = 404
-	c.setContentType(htmlContentType)
+	c.ContentType = htmlContentType
 	c.WriteHeaders()
 	c.conn.Write([]byte("404 Not Found"))
 }
 
 func (c *Context) Forbidden() {
 	c.StatusCode = 403
-	c.setContentType(htmlContentType)
+	c.ContentType = htmlContentType
 	c.WriteHeaders()
 	c.conn.Write([]byte("403 Forbidden"))
 }
 
+func (c *Context) RangeNotSatisfiable() {
+	c.StatusCode = 416
+	c.WriteHeaders()
+	c.conn.Write([]byte("416 Range Not Satisfiable"))
+}
+
 func (c *Context) InternalError() {
 	c.StatusCode = 500
-	c.setContentType(htmlContentType)
+	c.ContentType = htmlContentType
 	c.WriteHeaders()
 	c.conn.Write([]byte("500 Internal Error"))
 }
@@ -290,6 +299,9 @@ func (c *Context) handleRange() error {
 	if v, ok := c.Request.Headers["Range"]; ok && len(v) == 1 && strings.HasPrefix(v[0], "bytes=") {
 		req := v[0][6:]
 		sp := strings.SplitN(req, "-", 2)
+		if len(sp) == 1 {
+			return ErrRangeError
+		}
 		startSizeString, endSizeString := sp[0], sp[1]
 		startSize, err := strconv.Atoi(startSizeString)
 		if err != nil {

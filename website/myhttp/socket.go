@@ -101,7 +101,7 @@ func checkErr(err error) {
 	}
 }
 
-func accept(s int, rsa *syscall.RawSockaddr, addrlen *uint32) (fd int, err error) {
+func sysAccept(s int, rsa *syscall.RawSockaddr, addrlen *uint32) (fd int, err error) {
 	r0, _, e1 := syscall.Syscall(syscall.SYS_ACCEPT, uintptr(s), uintptr(unsafe.Pointer(rsa)), uintptr(unsafe.Pointer(addrlen)))
 	fd = int(r0)
 	if e1 != 0 {
@@ -113,7 +113,7 @@ func accept(s int, rsa *syscall.RawSockaddr, addrlen *uint32) (fd int, err error
 func rawAccept(fd int) (int, *syscall.RawSockaddr, error) {
 	var rsa syscall.RawSockaddr
 	var len uint32 = 0x70 // syscall.SizeofSockaddrAny
-	nfd, err := accept(fd, &rsa, &len)
+	nfd, err := sysAccept(fd, &rsa, &len)
 	return nfd, &rsa, err
 }
 
