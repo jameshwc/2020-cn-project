@@ -32,7 +32,8 @@ type Redis struct {
 }
 
 type Log struct {
-	LogStashAddr string
+	IsLogStashActivate bool
+	LogStashAddr       string
 }
 
 var DBconfig = &Database{}
@@ -53,7 +54,12 @@ func Setup() {
 	ServerConfig = &Server{
 		HttpPort: port,
 	}
+	isLogstashActivate := false
+	if os.Getenv("is_logstash_activate") == "1" {
+		isLogstashActivate = true
+	}
 	LogConfig = &Log{
-		LogStashAddr: os.Getenv("logstash_addr"),
+		LogStashAddr:       os.Getenv("logstash_addr"),
+		IsLogStashActivate: isLogstashActivate,
 	}
 }

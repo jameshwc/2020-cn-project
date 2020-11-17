@@ -65,13 +65,13 @@ func (c *Context) VIDEO(filepath string) {
 	c.serveFile(filepath, videoContentType)
 }
 
-func (c *Context) AUDIO(filepath string) {
-	c.serveFile(filepath, audioContentType)
+func (c *Context) MP3(filepath string) {
+	c.serveFile(filepath, mp3AudioContentType)
 }
 
 func (c *Context) serveFile(filepath, contentType string) {
 	c.StatusCode = 200
-	c.ContentType = videoContentType
+	c.ContentType = contentType
 	c.readFile(filepath)
 	if err := c.handleRange(); err != nil {
 		c.RangeNotSatisfiable()
@@ -269,10 +269,6 @@ func (c *Context) WriteJSON(obj interface{}) error {
 	}
 	c.body = jsonBytes
 	return nil
-}
-
-func (c *Context) SetCookie(key, val string) {
-
 }
 
 func (c *Context) Cookie(key string) string {

@@ -29,12 +29,14 @@ func Setup() {
 			FullTimestamp:   true,
 		},
 	}
-	conn, err := net.Dial("tcp", conf.LogConfig.LogStashAddr)
-	if err != nil {
-		logrus.Fatal(err)
+	if conf.LogConfig.IsLogStashActivate {
+		conn, err := net.Dial("tcp", conf.LogConfig.LogStashAddr)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		hook := logrustash.New(conn, logrustash.DefaultFormatter(logrus.Fields{"type": "myappName"}))
+		Logger.Hooks.Add(hook)
 	}
-	hook := logrustash.New(conn, logrustash.DefaultFormatter(logrus.Fields{"type": "myappName"}))
-	Logger.Hooks.Add(hook)
 }
 
 // Debug output logs at debug level

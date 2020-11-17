@@ -37,6 +37,8 @@ func main() {
 	router.GET("/logout", viewuser.Logout)
 	router.GET("/video/video.mp4", view.Video)
 	router.GET("/video_demo", view.VideoDemo)
+	router.GET("/audio/wake_me_up_320k.mp3", view.Audio)
+	router.GET("/audio_demo", view.AudioDemo)
 
 	for {
 		conn, errs := listen.Accept()
